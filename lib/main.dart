@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:system_tray/system_tray.dart';
+import 'package:path_provider/path_provider.dart';
 import 'providers/account_provider.dart';
 import 'screens/home_screen.dart';
 import 'widgets/about_dialog.dart';
@@ -15,9 +16,12 @@ RandomAccessFile? _lockFileHandle;
 
 Future<bool> _checkSingleInstance() async {
   try {
-    final exePath = Platform.resolvedExecutable;
-    final exeDir = File(exePath).parent.path;
-    final lockPath = '$exeDir\\.2fa_manager.lock';
+    final directory = await getApplicationSupportDirectory();
+    final appDir = Directory('${directory.path}\\Google2FAManager');
+    if (!await appDir.exists()) {
+      await appDir.create(recursive: true);
+    }
+    final lockPath = '${appDir.path}\\.2fa_manager.lock';
     
     _lockFile = File(lockPath);
     _lockFileHandle = await _lockFile!.open(mode: FileMode.write);

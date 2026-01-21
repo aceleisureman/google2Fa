@@ -239,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddAccountDialog,
         backgroundColor: const Color(0xFF1A73E8),
+        shape: const CircleBorder(),
         child: const Icon(Icons.add, size: 28),
       ).animate().scale(delay: 300.ms, duration: 300.ms),
     );

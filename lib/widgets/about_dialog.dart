@@ -10,6 +10,11 @@ class AboutAppDialog extends StatelessWidget {
     ToastUtils.showTopRightToast(context, '邮箱已复制');
   }
 
+  void _copyGithub(BuildContext context) {
+    Clipboard.setData(const ClipboardData(text: 'https://github.com/aceleisureman/google2Fa'));
+    ToastUtils.showTopRightToast(context, '开源地址已复制');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -94,6 +99,13 @@ class AboutAppDialog extends StatelessWidget {
               label: '联系',
               value: 'banxiabk@gmail.com',
               onTap: () => _copyEmail(context),
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow(
+              icon: Icons.code,
+              label: '开源',
+              value: 'github.com/aceleisureman/google2Fa',
+              onTap: () => _copyGithub(context),
             ),
             const SizedBox(height: 24),
             // Close button

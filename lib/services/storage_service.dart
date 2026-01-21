@@ -6,15 +6,21 @@ import '../models/account.dart';
 class StorageService {
   static const String _fileName = 'accounts.json';
   static const String _backupFileName = '2fa_backup.txt';
+  static const String _appFolderName = 'Google2FAManager';
 
+  /// 获取应用数据目录（AppData/Roaming/Google2FAManager）
   static Future<String> get _localPath async {
-    final directory = await getApplicationDocumentsDirectory();
-    return directory.path;
+    final directory = await getApplicationSupportDirectory();
+    final appDir = Directory('${directory.path}\\$_appFolderName');
+    if (!await appDir.exists()) {
+      await appDir.create(recursive: true);
+    }
+    return appDir.path;
   }
 
   static Future<File> get _localFile async {
     final path = await _localPath;
-    return File('$path/$_fileName');
+    return File('$path\\$_fileName');
   }
 
   static Future<List<Account>> loadAccounts() async {
@@ -71,30 +77,38 @@ class StorageService {
     }
   }
 
-  /// 获取备份文件路径（exe所在目录）
+  /// 获取备份文件路径（系统目录）
   static Future<String> getBackupFilePath() async {
-    final exePath = Platform.resolvedExecutable;
-    final exeDir = File(exePath).parent.path;
-    return '$exeDir\\$_backupFileName';
+    final path = await _localPath;
+    return '$path\\$_backupFileName';
   }
 
-  /// 自动备份到exe根目录（保留最近10次备份）
+  /// 获取备份目录路径
+  static Future<String> get _backupPath async {
+    final path = await _localPath;
+    final backupDir = Directory('$path\\backups');
+    if (!await backupDir.exists()) {
+      await backupDir.create(recursive: true);
+    }
+    return backupDir.path;
+  }
+
+  /// 自动备份到系统目录（保留最近10次备份）
   static Future<bool> autoBackup(List<Account> accounts) async {
     if (accounts.isEmpty) return false;
     try {
-      final exePath = Platform.resolvedExecutable;
-      final exeDir = File(exePath).parent.path;
+      final backupDir = await _backupPath;
       final now = DateTime.now();
       final timestamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
       final backupFileName = '2fa_backup_$timestamp.txt';
-      final backupPath = '$exeDir\\$backupFileName';
+      final backupPath = '$backupDir\\$backupFileName';
       
       final file = File(backupPath);
       final lines = accounts.map((a) => a.toExportString()).join('\n');
       await file.writeAsString(lines);
       
       // 清理旧备份，只保留最近10个
-      await _cleanOldBackups(exeDir);
+      await _cleanOldBackups(backupDir);
       
       print('Auto backup saved to: $backupPath');
       return true;
@@ -105,9 +119,9 @@ class StorageService {
   }
 
   /// 清理旧备份，只保留最近10个
-  static Future<void> _cleanOldBackups(String exeDir) async {
+  static Future<void> _cleanOldBackups(String backupDir) async {
     try {
-      final dir = Directory(exeDir);
+      final dir = Directory(backupDir);
       final backupFiles = <File>[];
       
       await for (final entity in dir.list()) {
@@ -140,10 +154,11 @@ class StorageService {
   /// 获取所有备份文件列表（最多10个，按时间倒序）
   static Future<List<Map<String, dynamic>>> getBackupList() async {
     try {
-      final exePath = Platform.resolvedExecutable;
-      final exeDir = File(exePath).parent.path;
-      final dir = Directory(exeDir);
+      final backupDir = await _backupPath;
+      final dir = Directory(backupDir);
       final backupFiles = <File>[];
+      
+      if (!await dir.exists()) return [];
       
       await for (final entity in dir.list()) {
         if (entity is File && entity.path.contains('2fa_backup_') && entity.path.endsWith('.txt')) {
