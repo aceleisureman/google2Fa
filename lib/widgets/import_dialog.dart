@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../providers/account_provider.dart';
 import '../models/account.dart';
+import '../services/google_auth_import.dart';
 import 'toast_utils.dart';
 
 class ImportDialog extends StatefulWidget {
@@ -42,6 +43,12 @@ class _ImportDialogState extends State<ImportDialog> {
       return;
     }
 
+    // 检查是否为 Google Authenticator 导出格式
+    if (GoogleAuthImport.isOtpAuthMigration(text)) {
+      _parseGoogleAuthData(text);
+      return;
+    }
+
     final lines = text.split('\n');
     final accounts = <Account>[];
     final seenEmails = <String>{};
@@ -65,6 +72,32 @@ class _ImportDialogState extends State<ImportDialog> {
     setState(() {
       _previewAccounts = accounts;
       _invalidCount = invalid;
+    });
+  }
+
+  void _parseGoogleAuthData(String data) {
+    final googleAccounts = GoogleAuthImport.parseOtpAuthMigration(data);
+    final accounts = <Account>[];
+    final seenNames = <String>{};
+
+    for (final ga in googleAccounts) {
+      // Google Authenticator 只导出 name 和 secret，没有完整的 email 信息
+      // 使用 issuer + name 作为标识
+      final identifier = ga.issuer.isNotEmpty ? '${ga.issuer}:${ga.name}' : ga.name;
+      if (!seenNames.contains(identifier)) {
+        seenNames.add(identifier);
+        accounts.add(Account(
+          email: ga.name.contains('@') ? ga.name : '${ga.name}@${ga.issuer.toLowerCase().replaceAll(' ', '')}.com',
+          password: '',
+          recoveryEmail: '',
+          totpSecret: ga.secret,
+        ));
+      }
+    }
+
+    setState(() {
+      _previewAccounts = accounts;
+      _invalidCount = 0;
     });
   }
 
